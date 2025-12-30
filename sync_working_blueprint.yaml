@@ -15,7 +15,7 @@ blueprint:
       name: Third entity
       selector:
         entity: {}
-  source_url: https://gist.github.com/creedda/31d391e007b978aed3879fcc1d0fb22c
+ # source_url: https://gist.github.com/creedda/31d391e007b978aed3879fcc1d0fb22c
 mode: restart
 max_exceeded: silent
 variables:
