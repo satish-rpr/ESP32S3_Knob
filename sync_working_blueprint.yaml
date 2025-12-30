@@ -66,8 +66,7 @@ action:
                         {% if trigger.from_state.entity_id == entity_1 %} {{ entity_2 }}
                         {% else %} {{ entity_1 }} {% endif %}
         - service: switch.turn_on
-          target:
-            entity_id: entity_3
+          target: !input entity_3
 
   default:
   - service: light.turn_off
@@ -76,6 +75,5 @@ action:
                   {% if trigger.from_state.entity_id == entity_1 %} {{ entity_2 }}
                   {% else %} {{ entity_1 }} {% endif %}
   - service: switch.turn_off
-    target:
-      entity_id: entity_3
+    target: !input entity_3
   
