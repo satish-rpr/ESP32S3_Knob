@@ -151,7 +151,7 @@ switch:
   - platform: lvgl
     id: light_1_switch
     name: "Living 1 switch"
-    widget: living_1_switch_widget
+    widget: led_1_switch_widget
 
 font:
   - file: "gfonts://Roboto"
@@ -470,9 +470,12 @@ binary_sensor:
       allow_other_uses: true
     on_press:
        then:
-            - light.turn_on:
+            - light.dim_relative:
                 id: living_1_light
-                brightness: !lambda 'return id(living_1_light).current_values.is_on();'
+                relative_brightness: 5%
+                brightness_limits:
+                  min_brightness: 0%
+                  max_brightness: 100%
              
             - if:
                 condition: lvgl.is_paused
@@ -490,9 +493,12 @@ binary_sensor:
       allow_other_uses: true
     on_press:
       then:
-            - light.turn_on:
+            - light.dim_relative:
                 id: living_1_light
-                brightness: !lambda 'return id(living_1_light).current_values.is_on();'
+                relative_brightness: -5%
+                brightness_limits:
+                  min_brightness: 0%
+                  max_brightness: 100%
 
             - if:
                 condition: lvgl.is_paused
