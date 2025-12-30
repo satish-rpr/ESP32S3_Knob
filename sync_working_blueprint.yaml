@@ -43,6 +43,13 @@ trigger:
 
 - platform: state
   entity_id: !input entity_3
+- platform: state
+  entity_id: !input entity_3
+  attribute: brightness
+- platform: state
+  entity_id: !input entity_3
+  attribute: rgb_color
+
   
 condition: []
 action:
