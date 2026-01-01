@@ -15,6 +15,18 @@ esphome:
     board_build.flash_mode: dio
     board_build.f_flash: 80000000L
     board_build.f_cpu: 240000000L
+  
+  # Wait for Home Assistant before boot complete
+  on_boot:
+    priority: 600  # High priority to run early
+    then:
+      - wait_until:
+          condition:
+            api.connected:
+              state_subscription_only: true
+      - logger.log: "Home Assistant connected successfully!"
+      - homeassistant.event:
+          event: esphome.device_booted
 
 esp32:
   board: esp32-s3-devkitc-1
@@ -43,14 +55,15 @@ api:
                 {
                   lv_led_set_color(id(ha_led), lv_color_hex(0x00ff00));
                   lv_obj_add_flag(id(busy_spinner), LV_OBJ_FLAG_HIDDEN);
+                  id(ha_connection_status) = true;
                 }
   on_client_disconnected: 
     then:
       - lambda: |-
                 {
                   lv_led_set_color(id(ha_led), lv_color_hex(0x00ff00));
-                }
-          
+                  id(ha_connection_status) = false;
+                }         
 
 ota:
   - platform: esphome
@@ -63,10 +76,30 @@ wifi:
     gateway: 192.168.1.1
     subnet: 255.255.255.0
     dns1: 8.8.8.8
+  
+  fast_connect: true
+  power_save_mode: none
 
   ap:
     ssid: "${friendly_name} Fallback Hotspot"
     password: "fallbackPassw0rd"
+
+time:
+  - platform: sntp  # or homeassistant
+    id: time_comp
+    update_interval: 6h
+    timezone: Asia/Kolkata
+    servers:
+      - 0.pool.ntp.org
+      - 1.pool.ntp.org
+    on_time_sync:
+      - script.execute: update_clock
+    on_time:
+      - minutes: '*'
+        seconds: 0
+        then:
+          - script.execute: update_clock
+
 
 spi:
   id: display_qspi
@@ -79,42 +112,15 @@ i2c:
   scl: 12
   id: touchscreen_bus
 
-# Deep sleep configuration - wakes up on encoder rotation
-deep_sleep:
-  id: deep_sleep_control
-  esp32_ext1_wakeup:
-    mode: ANY_LOW
-    pins:
-      - number: GPIO7
-        allow_other_uses: true
-      - number: GPIO8
-        allow_other_uses: true
-
 globals:
   - id: current_page
     type: int
     restore_value: no
     initial_value: '1'
-  - id: pending_cover_position
-    type: int
-    restore_value: no
-    initial_value: '0'
-  - id: cover_update_pending
+  - id: ha_connection_status
     type: bool
     restore_value: no
     initial_value: 'false'
-  - id: pending_led_brightness
-    type: int
-    restore_value: no
-    initial_value: '0'
-  - id: led_update_pending
-    type: bool
-    restore_value: no
-    initial_value: 'false'
-  - id: encoder_value
-    type: int
-    initial_value: '0'
-    restore_value: true
 
 touchscreen:
   platform: cst816
@@ -144,14 +150,81 @@ light:
   - platform: lvgl
     name: "Living One"
     id: living_1_light
-    widget: led_indicator_1
-    default_transition_length: 500ms
+    widget: living_1_led_indicator
+    default_transition_length: 0ms
+  
+  - platform: lvgl
+    name: "Living Two"
+    id: living_2_light
+    widget: living_2_led_indicator
+    default_transition_length: 0ms
+
+  - platform: lvgl
+    name: "Living Three"
+    id: living_3_light
+    widget: living_3_led_indicator
+    default_transition_length: 0ms
+  
+  - platform: lvgl
+    name: "Dining One"
+    id: dining_1_light
+    widget: dining_1_led_indicator
+    default_transition_length: 0ms
+
+  - platform: lvgl
+    name: "Dining Two"
+    id: dining_2_light
+    widget: dining_2_led_indicator
+    default_transition_length: 0ms
 
 switch:
   - platform: lvgl
-    id: light_1_switch
+    id: living_1_switch
     name: "Living 1 switch"
-    widget: led_1_switch_widget
+    widget: living_led_1_switch_widget
+
+  - platform: lvgl
+    id: living_2_switch
+    name: "Living 2 switch"
+    widget: living_led_2_switch_widget
+
+  - platform: lvgl
+    id: living_3_switch
+    name: "Living 3 switch"
+    widget: living_led_3_switch_widget
+
+  - platform: lvgl
+    id: dining_1_switch
+    name: "Dining 1 switch"
+    widget: dining_led_1_switch_widget
+  
+  - platform: lvgl
+    id: dining_2_switch
+    name: "Dining 2 switch"
+    widget: dining_led_2_switch_widget
+  
+  - platform: template
+    name: Antiburn
+    id: switch_antiburn
+    icon: mdi:television-shimmer
+    optimistic: true
+    entity_category: "config"
+    turn_on_action:
+      - logger.log: "Starting Antiburn"
+      - if:
+          condition: lvgl.is_paused
+          then:
+            - lvgl.resume:
+            - lvgl.widget.redraw:
+      - lvgl.pause:
+          show_snow: true
+    turn_off_action:
+      - logger.log: "Stopping Antiburn"
+      - if:
+          condition: lvgl.is_paused
+          then:
+            - lvgl.resume:
+            - lvgl.widget.redraw:
 
 font:
   - file: "gfonts://Roboto"
@@ -175,11 +248,6 @@ output:
     pin:
       number: GPIO47
     id: backlight_pwm
-
-time:
-  - platform: homeassistant
-    id: homeassistant_time
-    timezone: Asia/Kolkata
 
 display:
   - platform: qspi_dbi
@@ -467,18 +535,20 @@ binary_sensor:
     pin:
       number: GPIO7
       mode: INPUT_PULLUP
-      allow_other_uses: true
     on_press:
        then:
             - light.dim_relative:
                 id: living_1_light
-                relative_brightness: 5%
+                relative_brightness: -10%
                 brightness_limits:
-                  min_brightness: 0%
+                  min_brightness: 10%
                   max_brightness: 100%
              
             - if:
-                condition: lvgl.is_paused
+                condition:
+                  or:
+                  - lvgl.is_paused
+                  - light.is_off: display_backlight
                 then:
                   - logger.log: "LVGL resuming from encoder"
                   - lvgl.resume:
@@ -490,47 +560,58 @@ binary_sensor:
     pin:
       number: GPIO8
       mode: INPUT_PULLUP
-      allow_other_uses: true
     on_press:
       then:
             - light.dim_relative:
                 id: living_1_light
-                relative_brightness: -5%
+                relative_brightness: 10%
                 brightness_limits:
-                  min_brightness: 0%
+                  min_brightness: 10%
                   max_brightness: 100%
 
             - if:
-                condition: lvgl.is_paused
+                condition: 
+                  or:
+                  - lvgl.is_paused
+                  - light.is_off: display_backlight
                 then:
                   - logger.log: "LVGL resuming from encoder"
                   - lvgl.resume:
                   - lvgl.widget.redraw:
                   - light.turn_on: display_backlight
-
-image:
-  - file: "images/background.png"  # Place in config dir
-    id: bg_image
-    resize: 360x360  # Match display resolution
-    type: rgb565
-    transparency: opaque
+  
+  - platform: status
+    name: "Device status"
   
 lvgl:
   on_idle:
-    timeout: 30s
-    then:
-      - logger.log: "LVGL is idle - preparing for deep sleep"
-      - light.turn_off: display_backlight
-      - lvgl.pause:
-      - delay: 1800s
-      - logger.log: "Entering deep sleep"
-      - deep_sleep.enter: deep_sleep_control
+    - timeout: 0ms
+      then:
+        - if:
+            condition:
+              lvgl.page.is_showing: clock_6_page
+            then:
+              - lambda: |-
+                        {
+                          lv_obj_add_flag(id(ha_led), LV_OBJ_FLAG_HIDDEN);
+                        }
+    - timeout: 30s
+      then:
+        - light.turn_off:
+            id: display_backlight
+            transition_length: 3s
+        - lvgl.pause:
+            show_snow: true
+
+  on_resume:
+   - light.turn_on:
+      id: display_backlight
+      transition_length: 1s
+
+  resume_on_input: true
   
   displays: 
     - my_display
-
-  disp_bg_image: bg_image
-  disp_bg_opa: 100%
 
   top_layer:
     widgets:
@@ -564,7 +645,7 @@ lvgl:
  
   pages:
     # First Page
-    - id: page_1
+    - id: living_1_page
       widgets:
         - obj:
             id: background_1
@@ -577,16 +658,10 @@ lvgl:
             pad_all: 0
         
         - switch:
-            id: led_1_switch_widget
+            id: living_led_1_switch_widget
             width: 150
             height: 80
             align: center
-            on_boot:
-              - lambda: |-
-                        {
-                          ESP_LOGD("DEBUG", "Currrent state of living light : %d", id(living_1_light).current_values.is_on());
-                        }
-                
             on_value:
               then:
               - if:
@@ -600,7 +675,7 @@ lvgl:
                     - lambda: 'ESP_LOGI("INFO","Living one OFF");'
 
         - led:
-            id: led_indicator_1
+            id: living_1_led_indicator
             width: 50
             height: 50
             x: -130
@@ -609,37 +684,38 @@ lvgl:
             color: 0x00FF00
         
         - label:
-            id: led_1_brightness_label
+            id: living_1_brightness_label
             align_to:
-              id: led_indicator_1
+              id: living_1_led_indicator
               align: bottom_mid
-            x: 10
-            y: -15
+            x: 50
+            y: -20
             text: "--%"
             text_font: roboto_32
             text_color: 0xFFFFFF
 
         - label:
-            id: page1_label
+            id: living_1_page_label
             align: top_mid
             y: 40
-            text: "Page 1"
+            text: "Living 1"
             text_font: roboto_32
             text_color: 0xFFFFFF
 
       on_swipe_left:
-        - lambda: 'id(current_page) = 2;'
+        - lambda: 'id(current_page) = 6;'
         - lvgl.page.show:
-            id: page_2
+            id: clock_6_page
             animation: OUT_LEFT
 
       on_swipe_right:
         - lambda: 'id(current_page) = 2;'
         - lvgl.page.show:
-            id: page_2 
+            id: living_2_page 
             animation: OUT_RIGHT
-                  
-    - id: page_2
+    
+    # Page 2
+    - id: living_2_page
       widgets:
         - obj:
             id: background_2
@@ -650,33 +726,366 @@ lvgl:
             bg_color: 0x000000
             border_width: 0
             pad_all: 0
-
+        
         - switch:
-            id: led_2_switch_widget
+            id: living_led_2_switch_widget
             width: 150
-            height: 30
+            height: 80
             align: center
+            on_value:
+              then:
+              - if:
+                  condition:
+                    - lambda: 'return x == 1;'
+                  then:
+                    - light.turn_on: living_2_light
+                    - lambda: 'ESP_LOGI("INFO","Living two ON");'
+                  else:
+                    - light.turn_off: living_2_light
+                    - lambda: 'ESP_LOGI("INFO","Living two OFF");'
+
+        - led:
+            id: living_2_led_indicator
+            width: 50
+            height: 50
+            x: -130
+            y: -156
+            align: bottom_mid
+            color: 0x00FF00
+        
+        - label:
+            id: living_2_brightness_label
+            align_to:
+              id: living_2_led_indicator
+              align: bottom_mid
+            x: 50
+            y: -20
+            text: "--%"
+            text_font: roboto_32
+            text_color: 0xFFFFFF
 
         - label:
-            id: page2_label
+            id: living_2_page_label
             align: top_mid
             y: 40
-            text: "Page 2"
+            text: "Living 2"
             text_font: roboto_32
             text_color: 0xFFFFFF
     
       on_swipe_left:
         - lambda: 'id(current_page) = 1;'
         - lvgl.page.show:
-            id: page_1
+            id: living_1_page
             animation: OUT_LEFT
       on_swipe_right:
-        - lambda: 'id(current_page) = 1;'
+        - lambda: 'id(current_page) = 3;'
         - lvgl.page.show:  
-            id: page_1
+            id: living_3_page
             animation: OUT_RIGHT
 
+    # Page 3
+    - id: living_3_page
+      widgets:
+        - obj:
+            id: background_3
+            x: 0
+            y: 0
+            width: 360
+            height: 360
+            bg_color: 0x000000
+            border_width: 0
+            pad_all: 0
+        
+        - switch:
+            id: living_led_3_switch_widget
+            width: 150
+            height: 80
+            align: center
+            on_value:
+              then:
+              - if:
+                  condition:
+                    - lambda: 'return x == 1;'
+                  then:
+                    - light.turn_on: living_3_light
+                    - lambda: 'ESP_LOGI("INFO","Living three ON");'
+                  else:
+                    - light.turn_off: living_3_light
+                    - lambda: 'ESP_LOGI("INFO","Living three OFF");'
 
+        - led:
+            id: living_3_led_indicator
+            width: 50
+            height: 50
+            x: -130
+            y: -156
+            align: bottom_mid
+            color: 0x00FF00
+        
+        - label:
+            id: living_3_brightness_label
+            align_to:
+              id: living_3_led_indicator
+              align: bottom_mid
+            x: 50
+            y: -20
+            text: "--%"
+            text_font: roboto_32
+            text_color: 0xFFFFFF
+
+        - label:
+            id: living_3_page_label
+            align: top_mid
+            y: 40
+            text: "Living 3"
+            text_font: roboto_32
+            text_color: 0xFFFFFF
+    
+      on_swipe_left:
+        - lambda: 'id(current_page) = 2;'
+        - lvgl.page.show:
+            id: living_2_page
+            animation: OUT_LEFT
+      on_swipe_right:
+        - lambda: 'id(current_page) = 4;'
+        - lvgl.page.show:  
+            id: dining_1_page
+            animation: OUT_RIGHT
+
+    # Page 4
+    - id: dining_1_page
+      widgets:
+        - obj:
+            id: background_4
+            x: 0
+            y: 0
+            width: 360
+            height: 360
+            bg_color: 0x000000
+            border_width: 0
+            pad_all: 0
+        
+        - switch:
+            id: dining_led_1_switch_widget
+            width: 150
+            height: 80
+            align: center
+            on_value:
+              then:
+              - if:
+                  condition:
+                    - lambda: 'return x == 1;'
+                  then:
+                    - light.turn_on: dining_1_light
+                    - lambda: 'ESP_LOGI("INFO","Dining one ON");'
+                  else:
+                    - light.turn_off: dining_1_light
+                    - lambda: 'ESP_LOGI("INFO","Dining one OFF");'
+
+        - led:
+            id: dining_1_led_indicator
+            width: 50
+            height: 50
+            x: -130
+            y: -156
+            align: bottom_mid
+            color: 0x00FF00
+        
+        - label:
+            id: dining_1_brightness_label
+            align_to:
+              id: dining_1_led_indicator
+              align: bottom_mid
+            x: 50
+            y: -20
+            text: "--%"
+            text_font: roboto_32
+            text_color: 0xFFFFFF
+
+        - label:
+            id: dining_1_page_label
+            align: top_mid
+            y: 40
+            text: "Dining 1"
+            text_font: roboto_32
+            text_color: 0xFFFFFF
+    
+      on_swipe_left:
+        - lambda: 'id(current_page) = 3;'
+        - lvgl.page.show:
+            id: living_3_page
+            animation: OUT_LEFT
+      on_swipe_right:
+        - lambda: 'id(current_page) = 5;'
+        - lvgl.page.show:  
+            id: dining_2_page
+            animation: OUT_RIGHT
+    
+    # Page 5
+    - id: dining_2_page
+      widgets:
+        - obj:
+            id: background_5
+            x: 0
+            y: 0
+            width: 360
+            height: 360
+            bg_color: 0x000000
+            border_width: 0
+            pad_all: 0
+        
+        - switch:
+            id: dining_led_2_switch_widget
+            width: 150
+            height: 80
+            align: center
+            on_value:
+              then:
+              - if:
+                  condition:
+                    - lambda: 'return x == 1;'
+                  then:
+                    - light.turn_on: dining_2_light
+                    - lambda: 'ESP_LOGI("INFO","Dining two ON");'
+                  else:
+                    - light.turn_off: dining_2_light
+                    - lambda: 'ESP_LOGI("INFO","Dining two OFF");'
+
+        - led:
+            id: dining_2_led_indicator
+            width: 50
+            height: 50
+            x: -130
+            y: -156
+            align: bottom_mid
+            color: 0x00FF00
+        
+        - label:
+            id: dining_2_brightness_label
+            align_to:
+              id: dining_2_led_indicator
+              align: bottom_mid
+            x: 50
+            y: -20
+            text: "--%"
+            text_font: roboto_32
+            text_color: 0xFFFFFF
+
+        - label:
+            id: dining_2_page_label
+            align: top_mid
+            y: 40
+            text: "Dining 2"
+            text_font: roboto_32
+            text_color: 0xFFFFFF
+    
+      on_swipe_left:
+        - lambda: 'id(current_page) = 4;'
+        - lvgl.page.show:
+            id: dining_1_page
+            animation: OUT_LEFT
+      on_swipe_right:
+        - lambda: 'id(current_page) = 6;'
+        - lvgl.page.show:  
+            id: clock_6_page
+            animation: OUT_RIGHT
+    
+    # Page 6 - clock
+    - id: clock_6_page
+      width: 100%
+      bg_color: Black
+      widgets:
+          # Outer Clock Container
+          - obj:
+              height: 360
+              width: 360
+              align: center
+              pad_all: 4
+              bg_color: Black
+              border_width: 0  
+              gesture_bubble: true
+              event_bubble: true
+              clickable: false
+              widgets:
+              - meter:
+                  clickable: false
+                  gesture_bubble: true
+                  height: 100%
+                  width: 100%
+                  align: center
+                  bg_color: Black
+                  scales:
+                    # Minor ticks
+                    - ticks:
+                        width: 2
+                        count: 61
+                        length: 10
+                        color: white
+                      range_from: 0
+                      range_to: 60
+                      angle_range: 360
+                      rotation: 270
+
+                      # Minuite hand
+                      indicators:
+                        - line:
+                            id: minute_hand
+                            width: 3
+                            color: silver
+                            r_mod: -1     
+
+                    # Major ticks
+                    - angle_range: 330
+                      rotation: 300
+                      range_from: 1
+                      range_to: 12
+                      ticks:
+                        width: 3
+                        count: 12
+                        length: 20
+                        color: White  
+
+                    # Hour hand
+                    - angle_range: 360
+                      rotation: 270
+                      range_from: 0
+                      range_to: 720
+                      indicators:
+                        - line:
+                            id: hour_hand
+                            width: 4
+                            color: silver
+                            r_mod: -40
+
+                    # Second hand
+                    - angle_range: 360
+                      rotation: 270
+                      range_from: 0
+                      range_to: 60
+                      indicators:
+                        - line:
+                            id: second_hand
+                            width: 2
+                            color: Red
+                            r_mod: -10
+      on_swipe_left:
+        - lambda: |- 
+                  {
+                    id(current_page) = 5;
+                    ESP_LOGD("DEBUG", "Left swipee from clock  page : %d", id(current_page));
+                  }
+        - lvgl.page.show:
+            id: dining_2_page
+            animation: OUT_LEFT
+      on_swipe_right:
+        - lambda: |- 
+                  {
+                    id(current_page) = 1;
+                    ESP_LOGD("DEBUG", "Right swipee from clock  page : %d", id(current_page));
+                  }
+        - lvgl.page.show:  
+            id: living_1_page
+            animation: OUT_RIGHT
   
 sensor:
   - platform: adc
@@ -738,6 +1147,32 @@ sensor:
                 snprintf(buf, sizeof(buf), "%d%%", (int)x);
                 return buf;
               }
+interval:
+  - interval: 1s
+    then:
+      - if:
+          condition:
+            - lvgl.page.is_showing: clock_6_page
+          then:
+            - lvgl.indicator.update:
+                id: second_hand
+                value: !lambda 'return id(time_comp).now().second;'
+
+script:
+  - id: update_clock
+    then:
+      - lvgl.indicator.update:
+          id: minute_hand
+          value: !lambda 'return id(time_comp).now().minute;'
+      - lvgl.indicator.update:
+          id: hour_hand
+          value: !lambda |-
+            auto now = id(time_comp).now();
+            return std::fmod(now.hour, 12) * 60 + now.minute;
+      - lvgl.indicator.update:
+          id: second_hand
+          value: !lambda 'return id(time_comp).now().second;'
+  
   
     
               
