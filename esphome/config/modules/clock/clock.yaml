@@ -31,7 +31,7 @@ script:
 
 lvgl:
   pages:
-    - id: clock_6_page
+    - id: clock_5_page
       width: 100%
       bg_color: Black
       widgets:
@@ -114,7 +114,7 @@ lvgl:
                     id(current_page) = 5;
                   }
         - lvgl.page.show:
-            id: dining_2_page
+            id: dining_1_page
             animation: OUT_LEFT
       on_swipe_right:
         - lambda: |- 

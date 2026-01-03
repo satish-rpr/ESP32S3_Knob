@@ -72,9 +72,9 @@ lvgl:
             text_color: 0xFFFFFF
 
       on_swipe_left:
-        - lambda: 'id(current_page) = 6;'
+        - lambda: 'id(current_page) = 5;'
         - lvgl.page.show:
-            id: clock_6_page
+            id: clock_5_page
             animation: OUT_LEFT
 
       on_swipe_right:
