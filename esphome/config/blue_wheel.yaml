@@ -9,8 +9,7 @@ packages:
   living.one: !include modules/living/living1.yaml
   living.two: !include modules/living/living2.yaml
   living.thee: !include modules/living/living3.yaml
-  dining.one: !include modules/dining/dining1.yaml
-  dining.two: !include modules/dining/dining2.yaml
+  dining: !include modules/dining/dining.yaml
   wifi: !include modules/wifi.yaml
   clock: !include modules/clock/clock.yaml
   battery: !include modules/battery.yaml
@@ -166,20 +165,17 @@ lvgl:
     - id: !extend living_3_page
 
     # Page 4
-    - id: !extend dining_1_page
-    
-    # Page 5
-    - id: !extend dining_2_page
+    - id: !extend dining_page
     
     # Page 6 - clock
-    - id: !extend clock_6_page
+    - id: !extend clock_5_page
   
 interval:
   - interval: 1s
     then:
       - if:
           condition:
-            - lvgl.page.is_showing: clock_6_page
+            - lvgl.page.is_showing: clock_5_page
           then:
             - lvgl.indicator.update:
                 id: second_hand

@@ -114,7 +114,7 @@ lvgl:
                     id(current_page) = 5;
                   }
         - lvgl.page.show:
-            id: dining_1_page
+            id: dining_page
             animation: OUT_LEFT
       on_swipe_right:
         - lambda: |- 

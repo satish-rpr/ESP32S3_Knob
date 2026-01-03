@@ -13,7 +13,7 @@ switch:
 
 lvgl:
   pages:
-    - id: dining_1_page
+    - id: dining_page
       widgets:
         - obj:
             id: background_4
@@ -66,7 +66,7 @@ lvgl:
             id: dining_1_page_label
             align: top_mid
             y: 40
-            text: "Dining 1"
+            text: "Dining"
             text_font: roboto_32
             text_color: 0xFFFFFF
     

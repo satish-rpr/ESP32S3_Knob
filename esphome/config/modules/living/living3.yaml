@@ -78,5 +78,5 @@ lvgl:
       on_swipe_right:
         - lambda: 'id(current_page) = 4;'
         - lvgl.page.show:  
-            id: dining_1_page
+            id: dining_page
             animation: OUT_RIGHT
