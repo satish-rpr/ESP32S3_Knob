@@ -49,7 +49,7 @@ lvgl:
             x: -130
             y: -156
             align: bottom_mid
-            color: 0x00FF00
+            color: 0xFDF4DC
         
         - label:
             id: living_2_brightness_label
