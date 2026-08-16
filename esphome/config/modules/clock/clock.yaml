@@ -111,11 +111,13 @@ lvgl:
       on_swipe_left:
         - lambda: |- 
                   {
-                    id(current_page) = 5;
+                    id(current_page) = 6;
                   }
         - lvgl.page.show:
             id: dining_page
-            animation: OUT_LEFT
+            animation: over_left
+            time: 400ms
+
       on_swipe_right:
         - lambda: |- 
                   {
@@ -123,4 +125,5 @@ lvgl:
                   }
         - lvgl.page.show:  
             id: living_1_page
-            animation: OUT_RIGHT
+            animation: over_right
+            time: 400ms

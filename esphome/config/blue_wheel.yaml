@@ -9,6 +9,7 @@ packages:
   living.one: !include modules/living/living1.yaml
   living.two: !include modules/living/living2.yaml
   living.thee: !include modules/living/living3.yaml
+  desklamp: !include modules/living/deskLamp.yaml
   dining: !include modules/dining/dining.yaml
   wifi: !include modules/wifi.yaml
   clock: !include modules/clock/clock.yaml
@@ -72,6 +73,12 @@ api:
                   lv_obj_add_flag(id(busy_spinner), LV_OBJ_FLAG_HIDDEN);
                   id(ha_connection_status) = true;
                 }
+
+      - homeassistant.service:
+          service: homeassistant.update_entity
+          data:
+            entity_id: "switch.living_1_switch, switch.living_2_switch, switch.living_3_switch, switch.desklamp_switch, switch.dining_switch"
+
   on_client_disconnected: 
     then:
       - lambda: |-
@@ -82,6 +89,72 @@ api:
 
 ota:
   - platform: esphome
+
+binary_sensor:
+  - platform: homeassistant
+    entity_id: switch.living_1_switch
+    id: status_living_1
+    on_state:
+      then:
+        - if:
+            condition:
+              lambda: 'return x;'
+            then:
+              - switch.turn_on: living_1_switch
+            else:
+              - switch.turn_off: living_1_switch
+
+  - platform: homeassistant
+    entity_id: switch.living_2_switch
+    id: status_living_2
+    on_state:
+      then:
+        - if:
+            condition:
+              lambda: 'return x;'
+            then:
+              - switch.turn_on: living_2_switch
+            else:
+              - switch.turn_off: living_2_switch
+
+  - platform: homeassistant
+    entity_id: switch.living_3_switch
+    id: status_living_3
+    on_state:
+      then:
+        - if:
+            condition:
+              lambda: 'return x;'
+            then:
+              - switch.turn_on: living_3_switch
+            else:
+              - switch.turn_off: living_3_switch
+
+  - platform: homeassistant
+    entity_id: switch.desklamp_switch
+    id: status_desk_lamp
+    on_state:
+      then:
+        - if:
+            condition:
+              lambda: 'return x;'
+            then:
+              - switch.turn_on: desklamp_switch
+            else:
+              - switch.turn_off: desklamp_switch
+
+  - platform: homeassistant
+    entity_id: switch.dining_switch
+    id: status_dining
+    on_state:
+      then:
+        - if:
+            condition:
+              lambda: 'return x;'
+            then:
+              - switch.turn_on: dining_1_switch
+            else:
+              - switch.turn_off: dining_1_switch
 
 spi:
   id: display_qspi
@@ -155,20 +228,70 @@ lvgl:
             arc_width: 8
  
   pages:
-    # Page 1
+    # Page 1 - Living 1 Switch
     - id: !extend living_1_page
+      on_load:
+        then:
+          - if:
+              condition:
+                lambda: 'return id(status_living_1).state;'
+              then:
+                - switch.turn_on: living_1_switch
+              else:
+                - switch.turn_off: living_1_switch
     
-    # Page 2
+    # Page 2 - Living 2 Switch
     - id: !extend living_2_page
+      on_load:
+        then:
+          - if:
+              condition:
+                lambda: 'return id(status_living_2).state;'
+              then:
+                - switch.turn_on: living_2_switch
+              else:
+                - switch.turn_off: living_2_switch
 
-    # Page 3
+    # Page 3 - Living 3 Switch
     - id: !extend living_3_page
+      on_load:
+        then:
+          - if:
+              condition:
+                lambda: 'return id(status_living_3).state;'
+              then:
+                - switch.turn_on: living_3_switch
+              else:
+                - switch.turn_off: living_3_switch
 
-    # Page 4
+    # Page 4 - Desk Lamp
+    - id: !extend desklamp_page
+      on_load:
+        then:
+          - if:
+              condition:
+                lambda: 'return id(status_desk_lamp).state;'
+              then:
+                - switch.turn_on: desklamp_switch
+              else:
+                - switch.turn_off: desklamp_switch
+
+    # Page 5 - Dining Switch
     - id: !extend dining_page
+      on_load:
+        then:
+          - if:
+              condition:
+                lambda: 'return id(status_dining).state;'
+              then:
+                - switch.turn_on: dining_1_switch
+              else:
+                - switch.turn_off: dining_1_switch
     
     # Page 6 - clock
     - id: !extend clock_5_page
+
+
   
 interval:
   - interval: 1s

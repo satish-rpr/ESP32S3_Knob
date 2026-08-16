@@ -1,22 +1,22 @@
 light:
   - platform: lvgl
-    name: "Living Two"
-    id: living_2_light
-    widget: living_2_led_indicator
+    name: "Desk Lamp"
+    id: desklamp_light
+    widget: desklamp_led_indicator
     default_transition_length: 0ms
 
 switch:
   - platform: lvgl
-    id: living_2_switch
-    name: "Living 2 switch"
-    widget: living_led_2_switch_widget
+    id: desklamp_switch
+    name: "Desk Lamp switch"
+    widget: desklamp_led_switch_widget
 
 lvgl:
   pages:
-    - id: living_2_page
+    - id: desklamp_page
       widgets:
         - obj:
-            id: background_2
+            id: background_4
             x: 0
             y: 0
             width: 360
@@ -26,7 +26,7 @@ lvgl:
             pad_all: 0
         
         - switch:
-            id: living_led_2_switch_widget
+            id: desklamp_led_switch_widget
             width: 150
             height: 80
             align: center
@@ -36,14 +36,14 @@ lvgl:
                   condition:
                     - lambda: 'return x == 1;'
                   then:
-                    - light.turn_on: living_2_light
-                    - lambda: 'ESP_LOGI("INFO","Living two ON");'
+                    - light.turn_on: desklamp_light
+                    - lambda: 'ESP_LOGI("INFO","Desk Lamp ON");'
                   else:
-                    - light.turn_off: living_2_light
-                    - lambda: 'ESP_LOGI("INFO","Living two OFF");'
+                    - light.turn_off: desklamp_light
+                    - lambda: 'ESP_LOGI("INFO","Desk Lamp OFF");'
 
         - led:
-            id: living_2_led_indicator
+            id: desklamp_led_indicator
             width: 50
             height: 50
             x: -130
@@ -52,23 +52,23 @@ lvgl:
             color: 0xFDF4DC
 
         - label:
-            id: living_2_page_label
+            id: desklamp_page_label
             align: top_mid
             y: 40
-            text: "Living 2"
+            text: "Desk Lamp"
             text_font: roboto_32
             text_color: 0xFFFFFF
     
       on_swipe_left:
-        - lambda: 'id(current_page) = 1;'
+        - lambda: 'id(current_page) = 3;'
         - lvgl.page.show:
-            id: living_1_page
+            id: living_3_page
             animation: over_left
             time: 400ms
 
       on_swipe_right:
-        - lambda: 'id(current_page) = 3;'
+        - lambda: 'id(current_page) = 5;'
         - lvgl.page.show:  
-            id: living_3_page
+            id: dining_page
             animation: over_right
             time: 400ms
