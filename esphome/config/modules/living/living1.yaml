@@ -51,17 +51,6 @@ lvgl:
             y: -156
             align: bottom_mid
             color: 0xFDF4DC
-        
-        - label:
-            id: living_1_brightness_label
-            align_to:
-              id: living_1_led_indicator
-              align: bottom_mid
-            x: 50
-            y: -20
-            text: "--%"
-            text_font: roboto_32
-            text_color: 0xFFFFFF
 
         - label:
             id: living_1_page_label
@@ -75,10 +64,12 @@ lvgl:
         - lambda: 'id(current_page) = 5;'
         - lvgl.page.show:
             id: clock_5_page
-            animation: OUT_LEFT
+            animation: over_left
+            time: 400ms 
 
       on_swipe_right:
         - lambda: 'id(current_page) = 2;'
         - lvgl.page.show:
             id: living_2_page 
-            animation: OUT_RIGHT
+            animation: over_right
+            time: 400ms 

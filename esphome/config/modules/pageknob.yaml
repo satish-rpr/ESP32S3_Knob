@@ -1,0 +1,164 @@
+# 1. Track the current page cleanly using a global variable
+globals:
+  - id: target_page_idx
+    type: int
+    restore_value: no
+    initial_value: '0'
+
+sensor:
+  - platform: rotary_encoder
+    id: knob_encoder
+    pin_a:
+      number: GPIO7
+      mode: INPUT_PULLUP
+    pin_b:
+      number: GPIO8
+      mode: INPUT_PULLUP
+    # Resolution 4 helps prevent multiple-page skipping on a single click
+    resolution: 4
+
+    on_clockwise:
+      then:
+        - if:
+            condition:
+              or:
+                - lvgl.is_paused
+                - light.is_off: display_backlight
+            then:
+              - light.turn_on: display_backlight
+              - lvgl.resume:
+              - lvgl.widget.redraw:
+            else:
+              - lambda: |-
+                  // Change '6' to match your actual total number of pages
+                  id(target_page_idx) = (id(target_page_idx) + 1) % 6;
+              - script.execute: debounce_page_change_left
+
+    on_anticlockwise:
+      then:
+        - if:
+            condition:
+              or:
+                - lvgl.is_paused
+                - light.is_off: display_backlight
+            then:
+              - light.turn_on: display_backlight
+              - lvgl.resume:
+              - lvgl.widget.redraw:
+            else:
+              - lambda: |-
+                  // Change '3' to match your actual total number of pages
+                  id(target_page_idx) = (id(target_page_idx) - 1 + 3) % 3;
+              - script.execute: debounce_page_change_right
+
+# 2. Debounce scripts isolate the fast knob clicks from interfering with active animations
+script:
+  - id: debounce_page_change_left
+    mode: restart # Kills previous execution threads when a new click comes in
+    then:
+      - delay: 80ms # Wait for the physical dial bounce to settle
+      - if:
+          condition:
+            lambda: 'return id(target_page_idx) == 0;'
+          then:
+            - lvgl.page.show:
+                id: living_1_page
+                animation: MOVE_LEFT
+                time: 250ms
+      - if:
+          condition:
+            lambda: 'return id(target_page_idx) == 1;'
+          then:
+            - lvgl.page.show:
+                id: living_2_page
+                animation: MOVE_LEFT
+                time: 250ms
+      - if:
+          condition:
+            lambda: 'return id(target_page_idx) == 2;'
+          then:
+            - lvgl.page.show:
+                id: living_3_page
+                animation: MOVE_LEFT
+                time: 250ms
+      - if:
+          condition:
+            lambda: 'return id(target_page_idx) == 3;'
+          then:
+            - lvgl.page.show:
+                id: desklamp_page
+                animation: MOVE_LEFT
+                time: 250ms
+      - if:
+          condition:
+            lambda: 'return id(target_page_idx) == 4;'
+          then:
+            - lvgl.page.show:
+                id: dining_page
+                animation: MOVE_LEFT
+                time: 250ms
+      - if:
+          condition:
+            lambda: 'return id(target_page_idx) == 5;'
+          then:
+            - lvgl.page.show:
+                id: clock_5_page
+                animation: MOVE_LEFT
+                time: 250ms
+
+  - id: debounce_page_change_right
+    mode: restart
+    then:
+      - delay: 80ms
+      - if:
+          condition:
+            lambda: 'return id(target_page_idx) == 0;'
+          then:
+            - lvgl.page.show:
+                id: living_1_page
+                animation: MOVE_RIGHT
+                time: 250ms
+      - if:
+          condition:
+            lambda: 'return id(target_page_idx) == 1;'
+          then:
+            - lvgl.page.show:
+                id: living_2_page
+                animation: MOVE_RIGHT
+                time: 250ms
+      - if:
+          condition:
+            lambda: 'return id(target_page_idx) == 2;'
+          then:
+            - lvgl.page.show:
+                id: living_3_page
+                animation: MOVE_RIGHT
+                time: 250ms
+      - if:
+          condition:
+            lambda: 'return id(target_page_idx) == 3;'
+          then:
+            - lvgl.page.show:
+                id: desklamp_page
+                animation: MOVE_RIGHT
+                time: 250ms
+      - if:
+          condition:
+            lambda: 'return id(target_page_idx) == 4;'
+          then:
+            - lvgl.page.show:
+                id: dining_page
+                animation: MOVE_RIGHT
+                time: 250ms
+      - if:
+          condition:
+            lambda: 'return id(target_page_idx) == 5;'
+          then:
+            - lvgl.page.show:
+                id: clock_5_page
+                animation: MOVE_RIGHT
+                time: 250ms
+
+binary_sensor:
+  - platform: status
+    name: "Device status"
